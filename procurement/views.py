@@ -14,6 +14,9 @@ from .serializers import (
 import yaml
 import os
 from django.conf import settings
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 # User Views
@@ -22,7 +25,7 @@ class UserRegisterView(generics.CreateAPIView):
 
     def perform_create(self, serializer):
         user = serializer.save()
-        print(f"Verification token sent to {user.email}: {user.email_verification_token}")
+        logger.info(f"Verification token sent to {user.email}: {user.email_verification_token}")
 
 
 class EmailVerificationView(APIView):
@@ -37,6 +40,7 @@ class EmailVerificationView(APIView):
                     user.email_verified = True
                     user.email_verification_token = None
                     user.save()
+                    logger.info(f"User {email} verified their email.")
                     return Response({"message": "Email verified successfully."}, status=200)
                 return Response({"error": "Invalid token."}, status=400)
             except User.DoesNotExist:
@@ -56,7 +60,7 @@ class PasswordResetView(APIView):
             try:
                 user = User.objects.get(email=email)
                 token = user.reset_password_token()
-                print(f"Password reset token for {email}: {token}")
+                logger.info(f"Password reset token for {email}: {token}")
                 return Response({"message": "Password reset email sent."}, status=200)
             except User.DoesNotExist:
                 return Response({"error": "User not found."}, status=404)
@@ -76,6 +80,7 @@ class PasswordResetConfirmView(APIView):
                     user.set_password(password)
                     user.password_reset_token = None
                     user.save()
+                    logger.info(f"User {email} successfully reset their password.")
                     return Response({"message": "Password reset successfully."}, status=200)
                 return Response({"error": "Invalid token."}, status=400)
             except User.DoesNotExist:
@@ -147,19 +152,28 @@ class BasketView(APIView):
     def post(self, request):
         items = request.data.get('items', [])
         for item in items:
-            Basket.objects.create(
-                user=request.user,
-                product_id=item['product_info'],
-                quantity=item['quantity']
-            )
+            try:
+                product = Product.objects.get(id=item['product_info'])
+                if item['quantity'] > product.quantity:
+                    return Response({"error": f"Not enough stock for product {product.id}"}, status=400)
+                Basket.objects.create(
+                    user=request.user,
+                    product=product,
+                    quantity=item['quantity']
+                )
+            except Product.DoesNotExist:
+                return Response({"error": f"Product with id {item['product_info']} not found."}, status=404)
         return Response({"message": "Items added to basket."}, status=201)
 
     def put(self, request):
         items = request.data.get('items', [])
         for item in items:
-            basket_item = Basket.objects.get(id=item['id'], user=request.user)
-            basket_item.quantity = item['quantity']
-            basket_item.save()
+            try:
+                basket_item = Basket.objects.get(id=item['id'], user=request.user)
+                basket_item.quantity = item['quantity']
+                basket_item.save()
+            except Basket.DoesNotExist:
+                return Response({"error": f"Basket item with id {item['id']} not found."}, status=404)
         return Response({"message": "Basket updated."})
 
     def delete(self, request):
@@ -189,8 +203,16 @@ class PartnerUpdateView(APIView):
         if not url:
             return Response({"error": "URL is required."}, status=400)
 
-        with open(os.path.join(settings.BASE_DIR, 'data', url), 'r', encoding='utf-8') as file:
-            data = yaml.safe_load(file)
+        file_path = os.path.join(settings.BASE_DIR, 'data', url)
+        if not os.path.exists(file_path):
+            return Response({"error": "File not found."}, status=404)
+
+        try:
+            with open(file_path, 'r', encoding='utf-8') as file:
+                data = yaml.safe_load(file)
+        except yaml.YAMLError as e:
+            logger.error(f"YAML parsing error: {e}")
+            return Response({"error": "Invalid YAML file format."}, status=400)
 
         shop_name = data['shop']
         categories = data['categories']
@@ -204,20 +226,23 @@ class PartnerUpdateView(APIView):
             )
 
         for product in products:
-            category = Category.objects.get(id=product['category'])
-            Product.objects.update_or_create(
-                id=product['id'],
-                defaults={
-                    "category": category,
-                    "shop": shop,
-                    "model": product['model'],
-                    "name": product['name'],
-                    "price": product['price'],
-                    "price_rrc": product['price_rrc'],
-                    "quantity": product['quantity'],
-                    "parameters": product.get('parameters', {}),
-                },
-            )
+            try:
+                category = Category.objects.get(id=product['category'])
+                Product.objects.update_or_create(
+                    id=product['id'],
+                    defaults={
+                        "category": category,
+                        "shop": shop,
+                        "model": product['model'],
+                        "name": product['name'],
+                        "price": product['price'],
+                        "price_rrc": product['price_rrc'],
+                        "quantity": product['quantity'],
+                        "parameters": product.get('parameters', {}),
+                    },
+                )
+            except Category.DoesNotExist:
+                return Response({"error": f"Category with id {product['category']} not found."}, status=404)
 
         return Response({"message": "Partner's price list updated successfully."})
 

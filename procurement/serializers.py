@@ -59,6 +59,18 @@ class UserEditSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['first_name', 'last_name', 'email', 'password', 'company', 'position']
+        extra_kwargs = {
+            'password': {'write_only': True},
+        }
+
+    def update(self, instance, validated_data):
+        password = validated_data.pop('password', None)
+        for key, value in validated_data.items():
+            setattr(instance, key, value)
+        if password:
+            instance.set_password(password)
+        instance.save()
+        return instance
 
 
 # Contact Serializers
@@ -66,6 +78,11 @@ class ContactSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contact
         fields = '__all__'
+
+    def validate_user(self, value):
+        if self.context['request'].user != value:
+            raise serializers.ValidationError("Нельзя создать контакт для другого пользователя.")
+        return value
 
 
 # Shop, Category, Product Serializers
@@ -82,6 +99,9 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 class ProductSerializer(serializers.ModelSerializer):
+    category = CategorySerializer(read_only=True)
+    shop = ShopSerializer(read_only=True)
+
     class Meta:
         model = Product
         fields = '__all__'
@@ -89,13 +109,26 @@ class ProductSerializer(serializers.ModelSerializer):
 
 # Basket Serializers
 class BasketSerializer(serializers.ModelSerializer):
+    product = ProductSerializer(read_only=True)
+
     class Meta:
         model = Basket
-        fields = '__all__'
+        fields = ['id', 'user', 'product', 'quantity']
+
+    def validate_quantity(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Количество должно быть больше нуля.")
+        return value
 
 
 # Order Serializers
 class OrderSerializer(serializers.ModelSerializer):
+    contact = ContactSerializer(read_only=True)
+
     class Meta:
         model = Order
-        fields = '__all__'
+        fields = ['id', 'user', 'contact', 'status', 'created_at']
+
+    def create(self, validated_data):
+        validated_data['user'] = self.context['request'].user
+        return super().create(validated_data)

@@ -21,6 +21,9 @@ class User(AbstractUser):
         self.save()
         return self.password_reset_token
 
+    def __str__(self):
+        return self.username
+
 
 class Contact(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='contacts')
@@ -32,16 +35,25 @@ class Contact(models.Model):
     apartment = models.CharField(max_length=10, blank=True, null=True)
     phone = models.CharField(max_length=20)
 
+    def __str__(self):
+        return f"{self.city}, {self.street}, {self.house}"
+
 
 class Shop(models.Model):
     name = models.CharField(max_length=255, unique=True)
     url = models.URLField(blank=True, null=True)
     state = models.BooleanField(default=True)
 
+    def __str__(self):
+        return self.name
+
 
 class Category(models.Model):
     id = models.PositiveIntegerField(primary_key=True)
     name = models.CharField(max_length=255)
+
+    def __str__(self):
+        return self.name
 
 
 class Product(models.Model):
@@ -55,11 +67,17 @@ class Product(models.Model):
     quantity = models.PositiveIntegerField()
     parameters = models.JSONField()
 
+    def __str__(self):
+        return self.name
+
 
 class Basket(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='basket')
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='basket_items')
     quantity = models.PositiveIntegerField()
+
+    def __str__(self):
+        return f"Basket item: {self.product.name} (x{self.quantity})"
 
 
 class Order(models.Model):
@@ -67,3 +85,6 @@ class Order(models.Model):
     contact = models.ForeignKey(Contact, on_delete=models.SET_NULL, null=True)
     status = models.CharField(max_length=50, default='created')
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Order #{self.id} - {self.status}"
