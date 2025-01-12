@@ -1,8 +1,34 @@
+from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 import uuid
 
 
+# Кастомный менеджер пользователя
+class CustomUserManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError("The Email field must be set")
+        email = self.normalize_email(email)
+        extra_fields.setdefault('username', email)  # Устанавливаем username равным email
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+
+        return self.create_user(email, password, **extra_fields)
+
+
+# Кастомная модель пользователя
 class User(AbstractUser):
     email = models.EmailField(unique=True)
     email_verified = models.BooleanField(default=False)
@@ -10,6 +36,15 @@ class User(AbstractUser):
     company = models.CharField(max_length=100, blank=True, null=True)
     position = models.CharField(max_length=100, blank=True, null=True)
     password_reset_token = models.CharField(max_length=100, blank=True, null=True)
+
+    # Указываем кастомный менеджер
+    objects = CustomUserManager()
+
+    # Определяем, что email будет использоваться как основное поле для аутентификации
+    USERNAME_FIELD = 'email'
+
+    # Дополнительные обязательные поля, которые запрашиваются при создании суперпользователя
+    REQUIRED_FIELDS = []  # Здесь можно указать 'first_name', 'last_name', если они должны быть обязательными
 
     def generate_email_verification_token(self):
         self.email_verification_token = uuid.uuid4().hex
@@ -22,7 +57,7 @@ class User(AbstractUser):
         return self.password_reset_token
 
     def __str__(self):
-        return self.username
+        return self.email
 
 
 class Contact(models.Model):
