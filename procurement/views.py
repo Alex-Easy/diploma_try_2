@@ -1,4 +1,4 @@
-from rest_framework import generics, status
+from rest_framework import generics, status, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -98,18 +98,18 @@ class UserEditView(generics.RetrieveUpdateAPIView):
 
 class ContactListView(generics.ListCreateAPIView):
     serializer_class = ContactSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         return Contact.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        serializer.save(user=self.request.user)  # Связываем контакт с текущим пользователем
 
 
 class ContactDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ContactSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
         return Contact.objects.filter(user=self.request.user)

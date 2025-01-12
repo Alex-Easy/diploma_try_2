@@ -87,6 +87,9 @@ class ContactSerializer(serializers.ModelSerializer):
     class Meta:
         model = Contact
         fields = '__all__'
+        extra_kwargs = {
+            'user': {'read_only': True},  # Поле user становится read-only
+        }
 
     def validate_user(self, value):
         if self.context['request'].user != value:
