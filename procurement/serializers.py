@@ -135,12 +135,15 @@ class BasketSerializer(serializers.ModelSerializer):
 
 # Order Serializers
 class OrderSerializer(serializers.ModelSerializer):
-    contact = ContactSerializer(read_only=True)
+    contact = serializers.PrimaryKeyRelatedField(queryset=Contact.objects.all())
 
     class Meta:
         model = Order
         fields = ['id', 'user', 'contact', 'status', 'created_at']
+        read_only_fields = ['user', 'status', 'created_at']  # Убедитесь, что user доступен только для чтения
 
     def create(self, validated_data):
+        # Устанавливаем текущего пользователя как владельца заказа
         validated_data['user'] = self.context['request'].user
         return super().create(validated_data)
+

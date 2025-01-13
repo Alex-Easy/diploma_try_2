@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import User, Contact, Shop, Category, Product, Basket, Order
 from rest_framework.exceptions import PermissionDenied
+from rest_framework import serializers
 from .serializers import (
     UserRegisterSerializer, EmailVerificationSerializer,
     UserLoginSerializer, PasswordResetSerializer,
@@ -227,7 +228,27 @@ class OrderListView(generics.ListCreateAPIView):
         return Order.objects.filter(user=self.request.user)
 
     def perform_create(self, serializer):
-        serializer.save(user=self.request.user)
+        order = serializer.save(user=self.request.user)
+
+        basket_items = Basket.objects.filter(user=self.request.user)
+
+        if not basket_items.exists():
+            raise serializers.ValidationError({"error": "Basket is empty, cannot create an order."})
+
+        for basket_item in basket_items:
+            product = basket_item.product
+
+            if basket_item.quantity > product.quantity:
+                raise serializers.ValidationError(
+                    {"error": f"Not enough stock for product {product.name}."}
+                )
+
+            # Уменьшаем количество на складе
+            product.quantity -= basket_item.quantity
+            product.save()
+
+        # Очищаем корзину
+        basket_items.delete()
 
 
 # Partner Views
