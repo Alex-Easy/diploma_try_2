@@ -4,6 +4,7 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import User, Contact, Shop, Category, Product, Basket, Order
+from rest_framework.exceptions import PermissionDenied
 from .serializers import (
     UserRegisterSerializer, EmailVerificationSerializer,
     UserLoginSerializer, PasswordResetSerializer,
@@ -106,13 +107,23 @@ class ContactListView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)  # Связываем контакт с текущим пользователем
 
+    def get_queryset(self):
+        # Добавляем сортировку по id или другому подходящему полю
+        return Contact.objects.filter(user=self.request.user).order_by('id')
+
 
 class ContactDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = ContactSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Contact.objects.filter(user=self.request.user)
+        return Contact.objects.all()  # Получаем все объекты (фильтруем доступ ниже)
+
+    def get_object(self):
+        obj = super().get_object()
+        if obj.user != self.request.user:
+            raise PermissionDenied("Вы не имеете права доступа к этому контакту.")  # Возвращаем 403
+        return obj
 
 
 # Shop Views
