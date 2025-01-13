@@ -1,4 +1,5 @@
 from rest_framework import generics, status, permissions
+from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -127,8 +128,8 @@ class ContactDetailView(generics.RetrieveUpdateDestroyAPIView):
 
 
 # Shop Views
-class ShopListView(generics.ListAPIView):
-    queryset = Shop.objects.all()
+class ShopListView(ListAPIView):
+    queryset = Shop.objects.filter(state=True)  # Фильтруем только активные магазины
     serializer_class = ShopSerializer
 
 

@@ -79,6 +79,9 @@ class Shop(models.Model):
     url = models.URLField(blank=True, null=True)
     state = models.BooleanField(default=True)
 
+    class Meta:
+        ordering = ['id']  # Добавляем сортировку по ID
+
     def __str__(self):
         return self.name
 
@@ -98,12 +101,15 @@ class Product(models.Model):
     id = models.PositiveIntegerField(primary_key=True)
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='products')
-    model = models.CharField(max_length=255)
+    model = models.CharField(max_length=255, blank=True)
     name = models.CharField(max_length=255)
     price = models.DecimalField(max_digits=10, decimal_places=2)
     price_rrc = models.DecimalField(max_digits=10, decimal_places=2)
     quantity = models.PositiveIntegerField()
-    parameters = models.JSONField()
+    parameters = models.JSONField(default=dict)
+
+    class Meta:
+        ordering = ['id']  # Устанавливаем порядок сортировки по ID
 
     def __str__(self):
         return self.name
