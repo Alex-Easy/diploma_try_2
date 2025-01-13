@@ -162,36 +162,60 @@ class BasketView(APIView):
         return Response(serializer.data)
 
     def post(self, request):
-        items = request.data.get('items', [])
-        for item in items:
-            try:
-                product = Product.objects.get(id=item['product_info'])
-                if item['quantity'] > product.quantity:
-                    return Response({"error": f"Not enough stock for product {product.id}"}, status=400)
-                Basket.objects.create(
-                    user=request.user,
-                    product=product,
-                    quantity=item['quantity']
-                )
-            except Product.DoesNotExist:
-                return Response({"error": f"Product with id {item['product_info']} not found."}, status=404)
-        return Response({"message": "Items added to basket."}, status=201)
+        try:
+            product_id = request.data.get('product')
+            quantity = request.data.get('quantity')
+
+            if not product_id or not quantity:
+                return Response({"error": "Product and quantity are required."}, status=400)
+
+            product = Product.objects.get(id=product_id)
+
+            if quantity > product.quantity:
+                return Response({"error": f"Not enough stock for product {product.id}"}, status=400)
+
+            basket_item, created = Basket.objects.get_or_create(
+                user=request.user,
+                product=product,
+                defaults={'quantity': quantity}
+            )
+
+            if not created:
+                basket_item.quantity += quantity
+                basket_item.save()
+
+            return Response({"message": "Item added to basket."}, status=201)
+
+        except Product.DoesNotExist:
+            return Response({"error": f"Product with id {product_id} not found."}, status=404)
 
     def put(self, request):
         items = request.data.get('items', [])
         for item in items:
             try:
                 basket_item = Basket.objects.get(id=item['id'], user=request.user)
+                product = basket_item.product
+
+                # Проверяем, достаточно ли товара на складе
+                if item['quantity'] > product.quantity:
+                    return Response({"error": f"Not enough stock for product {product.id}"}, status=400)
+
                 basket_item.quantity = item['quantity']
                 basket_item.save()
             except Basket.DoesNotExist:
                 return Response({"error": f"Basket item with id {item['id']} not found."}, status=404)
-        return Response({"message": "Basket updated."})
+
+        return Response({"message": "Basket updated."}, status=200)
 
     def delete(self, request):
         item_ids = request.data.get('items', [])
-        Basket.objects.filter(id__in=item_ids, user=request.user).delete()
-        return Response({"message": "Items removed from basket."})
+        basket_items = Basket.objects.filter(id__in=item_ids, user=request.user)
+
+        if not basket_items.exists():
+            return Response({"error": "Basket items not found."}, status=400)
+
+        basket_items.delete()
+        return Response({"message": "Items removed from basket."}, status=200)
 
 
 # Order Views
