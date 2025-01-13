@@ -87,6 +87,9 @@ class Category(models.Model):
     id = models.PositiveIntegerField(primary_key=True)
     name = models.CharField(max_length=255)
 
+    class Meta:
+        ordering = ['id']  # Добавляем сортировку по умолчанию
+
     def __str__(self):
         return self.name
 
