@@ -5,7 +5,7 @@ from .views import (
     ContactListView, ContactDetailView, ShopListView,
     CategoryListView, ProductListView, BasketView,
     OrderListView, PartnerUpdateView, PartnerStateView,
-    PartnerOrdersView
+    PartnerOrdersView, SupplierUploadPricelistView
 )
 
 urlpatterns = [
@@ -23,6 +23,7 @@ urlpatterns = [
     path('shops', ShopListView.as_view(), name='shop-list'),
     path('categories', CategoryListView.as_view(), name='category-list'),
     path('products', ProductListView.as_view(), name='product-list'),
+    path('api/v1/shop/<int:shop_id>/upload-pricelist/', SupplierUploadPricelistView.as_view(), name='upload-pricelist'),
 
     # Basket Endpoints
     path('basket', BasketView.as_view(), name='basket'),

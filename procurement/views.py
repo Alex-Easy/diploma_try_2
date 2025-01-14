@@ -7,6 +7,7 @@ from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import User, Contact, Shop, Category, Product, Basket, Order
 from rest_framework.exceptions import PermissionDenied
 from rest_framework import serializers
+from rest_framework.exceptions import NotFound, ValidationError
 from .serializers import (
     UserRegisterSerializer, EmailVerificationSerializer,
     UserLoginSerializer, PasswordResetSerializer,
@@ -333,3 +334,64 @@ class PartnerOrdersView(generics.ListAPIView):
 
     def get_queryset(self):
         return Order.objects.filter(contact__isnull=False)
+
+
+logger = logging.getLogger(__name__)
+
+
+class SupplierUploadPricelistView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, shop_id):
+        try:
+            # Validate that the shop exists
+            try:
+                shop = Shop.objects.get(id=shop_id)
+            except Shop.DoesNotExist:
+                return Response({"error": f"Shop with id {shop_id} not found."}, status=404)
+
+            # Ensure a file is provided in the request
+            if 'file' not in request.FILES:
+                return Response({"error": "No file provided."}, status=400)
+
+            uploaded_file = request.FILES['file']
+
+            # Parse the uploaded YAML file
+            try:
+                pricelist_data = yaml.safe_load(uploaded_file)
+            except yaml.YAMLError as e:
+                logger.error(f"Error parsing YAML: {e}")
+                return Response({"error": "Invalid YAML file format."}, status=400)
+
+            # Validate and process the price list data
+            for item in pricelist_data:
+                try:
+                    # Ensure the category exists
+                    category_id = item.get('category')
+                    if not category_id:
+                        return Response({"error": "Missing category ID in price list."}, status=400)
+
+                    category = Category.objects.get(id=category_id)
+
+                    # Create or update the product
+                    Product.objects.update_or_create(
+                        id=item.get('id'),
+                        defaults={
+                            'category': category,
+                            'shop': shop,
+                            'name': item.get('name'),
+                            'model': item.get('model', ''),
+                            'price': item.get('price'),
+                            'price_rrc': item.get('price_rrc'),
+                            'quantity': item.get('quantity'),
+                            'parameters': item.get('parameters', {})
+                        }
+                    )
+                except Category.DoesNotExist:
+                    return Response({"error": f"Category with id {category_id} not found."}, status=404)
+
+            return Response({"message": "Price list uploaded successfully."}, status=200)
+
+        except Exception as e:
+            logger.error(f"Unexpected error: {e}")
+            return Response({"error": "An unexpected error occurred."}, status=400)
