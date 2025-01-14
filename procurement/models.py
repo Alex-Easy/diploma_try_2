@@ -132,3 +132,6 @@ class Order(models.Model):
 
     def __str__(self):
         return f"Order #{self.id} - {self.status}"
+
+    class Meta:
+        ordering = ['-created_at']  # Сортировка по дате создания (самые новые первыми)
