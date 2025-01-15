@@ -30,7 +30,7 @@ def test_user_registration_success(api_client):
 # Test user registration with duplicate email
 @pytest.mark.django_db
 def test_user_registration_duplicate_email(api_client):
-    User.objects.create_user(email="test@example.com", password="password123")  # Теперь username не обязателен
+    User.objects.create_user(email="test@example.com", password="password123")
     data = {
         "email": "test@example.com",
         "password": "securepassword123",
@@ -61,10 +61,10 @@ def test_user_registration_invalid_data(api_client):
     assert response.status_code == 400
 
     # Check that the response data contains the expected errors
-    assert "email" in response.data  # Ошибка email
-    assert response.data["email"][0].code == "invalid"  # Code exception email
+    assert "email" in response.data
+    assert response.data["email"][0].code == "invalid"
     assert "password" in response.data  # Ошибка пароля
-    assert response.data["password"][0].code == "password_too_short"  # Code exception password
+    assert response.data["password"][0].code == "password_too_short"
 
 
 # Test successful email verification
@@ -185,13 +185,10 @@ def test_password_reset_confirm_invalid_token(api_client):
 # Test user profile update
 @pytest.mark.django_db
 def test_user_profile_update_success(api_client):
-    # Создаем пользователя
     user = User.objects.create_user(email="test@example.com", password="password123")
 
-    # Аутентифицируем пользователя
     api_client.force_authenticate(user=user)
 
-    # Данные для обновления
     data = {
         "first_name": "Updated",
         "last_name": "User",
@@ -199,16 +196,12 @@ def test_user_profile_update_success(api_client):
         "position": "Updated Position"
     }
 
-    # Отправляем запрос на обновление
     response = api_client.put(reverse('user-edit'), data, format='json')
 
-    # Диагностический вывод (на случай ошибок)
     print(response.data)
 
-    # Проверяем, что статус 200 (OK)
     assert response.status_code == 200
 
-    # Проверяем, что данные обновлены в базе данных
     user.refresh_from_db()
     assert user.first_name == "Updated"
     assert user.last_name == "User"

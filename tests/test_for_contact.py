@@ -27,7 +27,7 @@ def test_create_contact_success(api_client):
 
     response = api_client.post(reverse('contact-list'), data, format='json')
     print(f"Status code: {response.status_code}")
-    print(f"Response data: {response.data}")  # Диагностический вывод
+    print(f"Response data: {response.data}")
 
     assert response.status_code == 201
     assert Contact.objects.filter(user=user, city="Test City").exists()
@@ -39,20 +39,16 @@ def test_get_contact_list(api_client):
     user = User.objects.create_user(email="test@example.com", password="password123")
     api_client.force_authenticate(user=user)
 
-    # Создаем два контакта для текущего пользователя
     Contact.objects.create(user=user, city="City1", street="Street1", house="1", phone="1234567890")
     Contact.objects.create(user=user, city="City2", street="Street2", house="2", phone="0987654321")
 
-    # Выполняем GET-запрос к API
     response = api_client.get(reverse('contact-list'))
-    print(f"Response data: {response.data}")  # Диагностический вывод для проверки формата ответа
+    print(f"Response data: {response.data}")
 
-    # Проверяем, что ответ успешный
     assert response.status_code == 200
 
-    # Проверяем количество объектов в метаинформации и в results
-    assert response.data['count'] == 2  # Общее количество объектов
-    assert len(response.data['results']) == 2  # Количество объектов в текущей странице
+    assert response.data['count'] == 2
+    assert len(response.data['results']) == 2
 
 
 # Test updating contact
@@ -101,7 +97,6 @@ def test_access_foreign_contact(api_client):
 
     contact = Contact.objects.create(user=user2, city="City", street="Street", house="1", phone="1234567890")
 
-    # Попытка обновления чужого контакта
     data = {
         "city": "Unauthorized City",
         "street": "Unauthorized Street",

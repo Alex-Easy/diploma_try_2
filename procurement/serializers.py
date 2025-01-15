@@ -6,18 +6,27 @@ from .models import User, Contact, Shop, Category, Product, Basket, Order
 
 # User Serializers
 class UserRegisterSerializer(serializers.ModelSerializer):
+    """
+    Serializer for user registration.
+    """
     password = serializers.CharField(write_only=True, validators=[validate_password])
 
     class Meta:
         model = User
         fields = ['email', 'password', 'first_name', 'last_name', 'company', 'position']
 
-    def validate_email(self, value):
+    def validate_email(self, value: str) -> str:
+        """
+        Ensure the email is unique.
+        """
         if User.objects.filter(email=value).exists():
-            raise serializers.ValidationError("Пользователь с таким email уже существует.")
+            raise serializers.ValidationError("A user with this email already exists.")
         return value
 
-    def create(self, validated_data):
+    def create(self, validated_data: dict) -> User:
+        """
+        Create a new user and generate an email verification token.
+        """
         user = User.objects.create_user(
             username=validated_data['email'],
             email=validated_data['email'],
@@ -32,13 +41,19 @@ class UserRegisterSerializer(serializers.ModelSerializer):
 
 
 class EmailVerificationSerializer(serializers.Serializer):
+    """
+    Serializer for email verification.
+    """
     email = serializers.EmailField()
     token = serializers.CharField()
 
 
 class UserLoginSerializer(TokenObtainPairSerializer):
+    """
+    Custom serializer for user login with JWT tokens.
+    """
     @classmethod
-    def get_token(cls, user):
+    def get_token(cls, user: User) -> 'Token':
         token = super().get_token(user)
         token['email'] = user.email
         token['first_name'] = user.first_name
@@ -47,70 +62,90 @@ class UserLoginSerializer(TokenObtainPairSerializer):
 
 
 class PasswordResetSerializer(serializers.Serializer):
+    """
+    Serializer for password reset requests.
+    """
     email = serializers.EmailField()
 
 
 class PasswordResetConfirmSerializer(serializers.Serializer):
+    """
+    Serializer for confirming password reset.
+    """
     email = serializers.EmailField()
     password = serializers.CharField()
     token = serializers.CharField()
 
 
 class UserEditSerializer(serializers.ModelSerializer):
+    """
+    Serializer for editing user details.
+    """
     class Meta:
         model = User
         fields = ['first_name', 'last_name', 'email', 'password', 'company', 'position']
         extra_kwargs = {
-            'password': {'write_only': True, 'required': False},  # Указываем, что password необязательный
-            'email': {'required': False},  # Если email не изменяется, делаем его необязательным
+            'password': {'write_only': True, 'required': False},
+            'email': {'required': False},
         }
 
-    def update(self, instance, validated_data):
-        # Удаляем поле password из данных, если оно отсутствует
+    def update(self, instance: User, validated_data: dict) -> User:
+        """
+        Update user details.
+        """
         password = validated_data.pop('password', None)
-
-        # Обновляем оставшиеся поля
         for key, value in validated_data.items():
             setattr(instance, key, value)
-
-        # Устанавливаем пароль, если он передан
         if password:
             instance.set_password(password)
-
-        # Сохраняем изменения
         instance.save()
         return instance
 
 
 # Contact Serializers
 class ContactSerializer(serializers.ModelSerializer):
+    """
+    Serializer for user contacts.
+    """
     class Meta:
         model = Contact
         fields = '__all__'
         extra_kwargs = {
-            'user': {'read_only': True},  # Поле user становится read-only
+            'user': {'read_only': True},
         }
 
-    def validate_user(self, value):
+    def validate_user(self, value: User) -> User:
+        """
+        Validate that the contact belongs to the current user.
+        """
         if self.context['request'].user != value:
-            raise serializers.ValidationError("Нельзя создать контакт для другого пользователя.")
+            raise serializers.ValidationError("You cannot create a contact for another user.")
         return value
 
 
 # Shop, Category, Product Serializers
 class ShopSerializer(serializers.ModelSerializer):
+    """
+    Serializer for shops.
+    """
     class Meta:
         model = Shop
         fields = '__all__'
 
 
 class CategorySerializer(serializers.ModelSerializer):
+    """
+    Serializer for categories.
+    """
     class Meta:
         model = Category
         fields = '__all__'
 
 
 class ProductSerializer(serializers.ModelSerializer):
+    """
+    Serializer for products.
+    """
     category = CategorySerializer(read_only=True)
     shop = ShopSerializer(read_only=True)
 
@@ -121,29 +156,39 @@ class ProductSerializer(serializers.ModelSerializer):
 
 # Basket Serializers
 class BasketSerializer(serializers.ModelSerializer):
+    """
+    Serializer for basket items.
+    """
     product = ProductSerializer(read_only=True)
 
     class Meta:
         model = Basket
         fields = ['id', 'user', 'product', 'quantity']
 
-    def validate_quantity(self, value):
+    def validate_quantity(self, value: int) -> int:
+        """
+        Ensure the quantity is greater than zero.
+        """
         if value <= 0:
-            raise serializers.ValidationError("Количество должно быть больше нуля.")
+            raise serializers.ValidationError("Quantity must be greater than zero.")
         return value
 
 
 # Order Serializers
 class OrderSerializer(serializers.ModelSerializer):
+    """
+    Serializer for orders.
+    """
     contact = serializers.PrimaryKeyRelatedField(queryset=Contact.objects.all())
 
     class Meta:
         model = Order
         fields = ['id', 'user', 'contact', 'status', 'created_at']
-        read_only_fields = ['user', 'status', 'created_at']  # Убедитесь, что user доступен только для чтения
+        read_only_fields = ['user', 'status', 'created_at']
 
-    def create(self, validated_data):
-        # Устанавливаем текущего пользователя как владельца заказа
+    def create(self, validated_data: dict) -> Order:
+        """
+        Create a new order and associate it with the current user.
+        """
         validated_data['user'] = self.context['request'].user
         return super().create(validated_data)
-

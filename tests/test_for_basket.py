@@ -12,7 +12,6 @@ def api_client():
 # Test for adding product to the basket
 @pytest.mark.django_db
 def test_add_to_basket_success(api_client):
-    # Создаем пользователя и аутентифицируем его
     user = User.objects.create_user(email="test@example.com", password="password123")
     api_client.force_authenticate(user=user)
 
@@ -61,7 +60,6 @@ def test_add_to_basket_insufficient_stock(api_client):
     # Вывод для отладки
     print("Response data:", response.data)
 
-    # Проверяем, что возвращается ошибка
     assert response.status_code == 400
     assert f"Not enough stock for product {product.id}" in response.data['error']
 
@@ -118,7 +116,6 @@ def test_update_basket_quantity_exceed_stock(api_client):
 # Test getting basket content
 @pytest.mark.django_db
 def test_get_basket_content(api_client):
-    # Создаем пользователя и аутентифицируем его
     user = User.objects.create_user(email="test@example.com", password="password123")
     api_client.force_authenticate(user=user)
 

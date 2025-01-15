@@ -1,13 +1,18 @@
+from typing import Any
+from django.db.models.query import QuerySet
 from rest_framework import generics, status, permissions
 from rest_framework.generics import ListAPIView
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
 from .models import User, Contact, Shop, Category, Product, Basket, Order
 from rest_framework.exceptions import PermissionDenied
 from rest_framework import serializers
-from rest_framework.exceptions import NotFound, ValidationError
+import yaml
+import os
+from django.conf import settings
+import logging
 from .serializers import (
     UserRegisterSerializer, EmailVerificationSerializer,
     UserLoginSerializer, PasswordResetSerializer,
@@ -15,25 +20,27 @@ from .serializers import (
     ContactSerializer, ShopSerializer, CategorySerializer,
     ProductSerializer, BasketSerializer, OrderSerializer
 )
-import yaml
-import os
-from django.conf import settings
-import logging
 
 logger = logging.getLogger(__name__)
 
 
 # User Views
 class UserRegisterView(generics.CreateAPIView):
+    """
+    View for user registration.
+    """
     serializer_class = UserRegisterSerializer
 
-    def perform_create(self, serializer):
+    def perform_create(self, serializer: UserRegisterSerializer) -> None:
         user = serializer.save()
         logger.info(f"Verification token sent to {user.email}: {user.email_verification_token}")
 
 
 class EmailVerificationView(APIView):
-    def post(self, request):
+    """
+    View for email verification.
+    """
+    def post(self, request: Any) -> Response:
         serializer = EmailVerificationSerializer(data=request.data)
         if serializer.is_valid():
             email = serializer.validated_data['email']
@@ -53,11 +60,17 @@ class EmailVerificationView(APIView):
 
 
 class UserLoginView(TokenObtainPairView):
+    """
+    View for user login.
+    """
     serializer_class = UserLoginSerializer
 
 
 class PasswordResetView(APIView):
-    def post(self, request):
+    """
+    View to handle password reset requests.
+    """
+    def post(self, request: Any) -> Response:
         serializer = PasswordResetSerializer(data=request.data)
         if serializer.is_valid():
             email = serializer.validated_data['email']
@@ -72,7 +85,10 @@ class PasswordResetView(APIView):
 
 
 class PasswordResetConfirmView(APIView):
-    def post(self, request):
+    """
+    View to confirm password reset.
+    """
+    def post(self, request: Any) -> Response:
         serializer = PasswordResetConfirmSerializer(data=request.data)
         if serializer.is_valid():
             email = serializer.validated_data['email']
@@ -93,57 +109,71 @@ class PasswordResetConfirmView(APIView):
 
 
 class UserEditView(generics.RetrieveUpdateAPIView):
+    """
+    View for retrieving and updating user details.
+    """
     serializer_class = UserEditSerializer
     permission_classes = [IsAuthenticated]
 
-    def get_object(self):
+    def get_object(self) -> User:
         return self.request.user
 
 
 class ContactListView(generics.ListCreateAPIView):
+    """
+    View for listing and creating user contacts.
+    """
     serializer_class = ContactSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def get_queryset(self):
-        return Contact.objects.filter(user=self.request.user)
-
-    def perform_create(self, serializer):
-        serializer.save(user=self.request.user)  # Связываем контакт с текущим пользователем
-
-    def get_queryset(self):
-        # Добавляем сортировку по id или другому подходящему полю
+    def get_queryset(self) -> QuerySet:
         return Contact.objects.filter(user=self.request.user).order_by('id')
+
+    def perform_create(self, serializer: ContactSerializer) -> None:
+        serializer.save(user=self.request.user)
 
 
 class ContactDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    View for retrieving, updating, and deleting a specific contact.
+    """
     serializer_class = ContactSerializer
     permission_classes = [permissions.IsAuthenticated]
 
-    def get_queryset(self):
-        return Contact.objects.all()  # Получаем все объекты (фильтруем доступ ниже)
+    def get_queryset(self) -> QuerySet:
+        return Contact.objects.all()
 
-    def get_object(self):
+    def get_object(self) -> Contact:
         obj = super().get_object()
         if obj.user != self.request.user:
-            raise PermissionDenied("Вы не имеете права доступа к этому контакту.")  # Возвращаем 403
+            raise PermissionDenied("You do not have permission to access this contact.")
         return obj
 
 
 # Shop Views
 class ShopListView(ListAPIView):
-    queryset = Shop.objects.filter(state=True)  # Фильтруем только активные магазины
+    """
+    View for listing active shops.
+    """
+    queryset = Shop.objects.filter(state=True)
     serializer_class = ShopSerializer
 
 
 class CategoryListView(generics.ListAPIView):
+    """
+    View for listing product categories.
+    """
     queryset = Category.objects.all()
     serializer_class = CategorySerializer
 
 
 class ProductListView(generics.ListAPIView):
+    """
+    View for listing products with optional filtering by shop and category.
+    """
     serializer_class = ProductSerializer
 
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet:
         queryset = Product.objects.all()
         shop_id = self.request.query_params.get('shop_id')
         category_id = self.request.query_params.get('category_id')
@@ -156,14 +186,17 @@ class ProductListView(generics.ListAPIView):
 
 # Basket Views
 class BasketView(APIView):
+    """
+    View for managing the user's basket.
+    """
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
+    def get(self, request: Any) -> Response:
         basket = Basket.objects.filter(user=request.user)
         serializer = BasketSerializer(basket, many=True)
         return Response(serializer.data)
 
-    def post(self, request):
+    def post(self, request: Any) -> Response:
         try:
             product_id = request.data.get('product')
             quantity = request.data.get('quantity')
@@ -191,14 +224,18 @@ class BasketView(APIView):
         except Product.DoesNotExist:
             return Response({"error": f"Product with id {product_id} not found."}, status=404)
 
-    def put(self, request):
+
+# Basket Views (continued)
+    def put(self, request: Any) -> Response:
+        """
+        Update basket items quantity.
+        """
         items = request.data.get('items', [])
         for item in items:
             try:
                 basket_item = Basket.objects.get(id=item['id'], user=request.user)
                 product = basket_item.product
 
-                # Проверяем, достаточно ли товара на складе
                 if item['quantity'] > product.quantity:
                     return Response({"error": f"Not enough stock for product {product.id}"}, status=400)
 
@@ -207,9 +244,12 @@ class BasketView(APIView):
             except Basket.DoesNotExist:
                 return Response({"error": f"Basket item with id {item['id']} not found."}, status=404)
 
-        return Response({"message": "Basket updated."}, status=200)
+        return Response({"message": "Basket updated successfully."}, status=200)
 
-    def delete(self, request):
+    def delete(self, request: Any) -> Response:
+        """
+        Remove items from the basket.
+        """
         item_ids = request.data.get('items', [])
         basket_items = Basket.objects.filter(id__in=item_ids, user=request.user)
 
@@ -222,15 +262,20 @@ class BasketView(APIView):
 
 # Order Views
 class OrderListView(generics.ListCreateAPIView):
+    """
+    View for listing and creating orders.
+    """
     serializer_class = OrderSerializer
     permission_classes = [IsAuthenticated]
 
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet:
         return Order.objects.filter(user=self.request.user)
 
-    def perform_create(self, serializer):
+    def perform_create(self, serializer: OrderSerializer) -> None:
+        """
+        Create an order and clear the basket after reducing stock.
+        """
         order = serializer.save(user=self.request.user)
-
         basket_items = Basket.objects.filter(user=self.request.user)
 
         if not basket_items.exists():
@@ -238,25 +283,23 @@ class OrderListView(generics.ListCreateAPIView):
 
         for basket_item in basket_items:
             product = basket_item.product
-
             if basket_item.quantity > product.quantity:
-                raise serializers.ValidationError(
-                    {"error": f"Not enough stock for product {product.name}."}
-                )
+                raise serializers.ValidationError({"error": f"Not enough stock for product {product.name}."})
 
-            # Уменьшаем количество на складе
             product.quantity -= basket_item.quantity
             product.save()
 
-        # Очищаем корзину
         basket_items.delete()
 
 
 # Partner Views
 class PartnerUpdateView(APIView):
+    """
+    View for updating the partner's price list.
+    """
     permission_classes = [IsAuthenticated]
 
-    def post(self, request):
+    def post(self, request: Any) -> Response:
         url = request.data.get('url')
         if not url:
             return Response({"error": "URL is required."}, status=400)
@@ -302,22 +345,31 @@ class PartnerUpdateView(APIView):
             except Category.DoesNotExist:
                 return Response({"error": f"Category with id {product['category']} not found."}, status=404)
 
-        return Response({"message": "Partner's price list updated successfully."})
+        return Response({"message": "Partner's price list updated successfully."}, status=200)
 
 
 class PartnerStateView(APIView):
+    """
+    View for retrieving and updating the partner's state.
+    """
     permission_classes = [IsAuthenticated]
 
-    def get(self, request):
+    def get(self, request: Any) -> Response:
+        """
+        Retrieve the partner's current state.
+        """
         shop = Shop.objects.first()
         if not shop:
             return Response({"error": "No shop found."}, status=404)
         return Response({"name": shop.name, "state": shop.state})
 
-    def post(self, request):
+    def post(self, request: Any) -> Response:
+        """
+        Update the partner's state.
+        """
         state = request.data.get('state')
         if state not in ['on', 'off']:
-            return Response({"error": "Invalid state."}, status=400)
+            return Response({"error": "Invalid state. Use 'on' or 'off'."}, status=400)
 
         shop = Shop.objects.first()
         if not shop:
@@ -325,73 +377,65 @@ class PartnerStateView(APIView):
 
         shop.state = state == 'on'
         shop.save()
-        return Response({"message": "Partner state updated successfully."})
+        return Response({"message": "Partner state updated successfully."}, status=200)
 
 
 class PartnerOrdersView(generics.ListAPIView):
+    """
+    View for listing partner's related orders.
+    """
     permission_classes = [IsAuthenticated]
     serializer_class = OrderSerializer
 
-    def get_queryset(self):
+    def get_queryset(self) -> QuerySet:
         return Order.objects.filter(contact__isnull=False)
 
 
-logger = logging.getLogger(__name__)
-
-
 class SupplierUploadPricelistView(APIView):
+    """
+    View for uploading supplier price lists.
+    """
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, shop_id):
+    def post(self, request: Any, shop_id: int) -> Response:
         try:
-            # Validate that the shop exists
+            shop = Shop.objects.get(id=shop_id)
+        except Shop.DoesNotExist:
+            return Response({"error": f"Shop with id {shop_id} not found."}, status=404)
+
+        if 'file' not in request.FILES:
+            return Response({"error": "No file provided."}, status=400)
+
+        uploaded_file = request.FILES['file']
+
+        try:
+            pricelist_data = yaml.safe_load(uploaded_file)
+        except yaml.YAMLError as e:
+            logger.error(f"Error parsing YAML: {e}")
+            return Response({"error": "Invalid YAML file format."}, status=400)
+
+        for item in pricelist_data:
             try:
-                shop = Shop.objects.get(id=shop_id)
-            except Shop.DoesNotExist:
-                return Response({"error": f"Shop with id {shop_id} not found."}, status=404)
+                category_id = item.get('category')
+                if not category_id:
+                    return Response({"error": "Missing category ID in price list."}, status=400)
 
-            # Ensure a file is provided in the request
-            if 'file' not in request.FILES:
-                return Response({"error": "No file provided."}, status=400)
+                category = Category.objects.get(id=category_id)
+                Product.objects.update_or_create(
+                    id=item.get('id'),
+                    defaults={
+                        'category': category,
+                        'shop': shop,
+                        'name': item.get('name'),
+                        'model': item.get('model', ''),
+                        'price': item.get('price'),
+                        'price_rrc': item.get('price_rrc'),
+                        'quantity': item.get('quantity'),
+                        'parameters': item.get('parameters', {})
+                    }
+                )
+            except Category.DoesNotExist:
+                return Response({"error": f"Category with id {category_id} not found."}, status=404)
 
-            uploaded_file = request.FILES['file']
+        return Response({"message": "Price list uploaded successfully."}, status=200)
 
-            # Parse the uploaded YAML file
-            try:
-                pricelist_data = yaml.safe_load(uploaded_file)
-            except yaml.YAMLError as e:
-                logger.error(f"Error parsing YAML: {e}")
-                return Response({"error": "Invalid YAML file format."}, status=400)
-
-            # Validate and process the price list data
-            for item in pricelist_data:
-                try:
-                    # Ensure the category exists
-                    category_id = item.get('category')
-                    if not category_id:
-                        return Response({"error": "Missing category ID in price list."}, status=400)
-
-                    category = Category.objects.get(id=category_id)
-
-                    # Create or update the product
-                    Product.objects.update_or_create(
-                        id=item.get('id'),
-                        defaults={
-                            'category': category,
-                            'shop': shop,
-                            'name': item.get('name'),
-                            'model': item.get('model', ''),
-                            'price': item.get('price'),
-                            'price_rrc': item.get('price_rrc'),
-                            'quantity': item.get('quantity'),
-                            'parameters': item.get('parameters', {})
-                        }
-                    )
-                except Category.DoesNotExist:
-                    return Response({"error": f"Category with id {category_id} not found."}, status=404)
-
-            return Response({"message": "Price list uploaded successfully."}, status=200)
-
-        except Exception as e:
-            logger.error(f"Unexpected error: {e}")
-            return Response({"error": "An unexpected error occurred."}, status=400)

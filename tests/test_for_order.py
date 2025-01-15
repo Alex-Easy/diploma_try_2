@@ -32,7 +32,7 @@ def test_create_order_success(api_client):
     assert response.status_code == 201
     assert Order.objects.filter(user=user).exists()
     product.refresh_from_db()
-    assert product.quantity == 7  # Количество уменьшилось на 3
+    assert product.quantity == 7  # Quantity should be updated
 
 
 # Test order creation without contact
@@ -82,7 +82,7 @@ def test_get_orders_list(api_client):
     response = api_client.get(reverse('order'))
 
     assert response.status_code == 200
-    assert len(response.data['results']) == 2  # Проверяем количество заказов в поле 'results'
+    assert len(response.data['results']) == 2
     order_statuses = [order['status'] for order in response.data['results']]
     assert "created" in order_statuses
     assert "delivered" in order_statuses
@@ -102,5 +102,5 @@ def test_get_orders_of_other_user(api_client):
 
     assert response.status_code == 200
     # Проверяем, что раздел results пуст
-    assert len(response.data['results']) == 0  # Исправлено: проверяем длину results
+    assert len(response.data['results']) == 0
 

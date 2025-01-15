@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 import os
 from pathlib import Path
 
-# Загрузка переменных из .env
+# Load environment variables from .env
 load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -32,28 +32,25 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 SECRET_KEY = os.getenv('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'  # Преобразуем строку в булево значение
+DEBUG = os.getenv('DEBUG', 'False').lower() == 'true'
 
 ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
 AUTH_USER_MODEL = 'procurement.User'
 APPEND_SLASH = True
 
 REST_FRAMEWORK = {
-    # Аутентификация через JWT
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ],
 
-    # Упрощенная обработка ошибок
     'DEFAULT_RENDERER_CLASSES': [
         'rest_framework.renderers.JSONRenderer',
     ],
 
-    # Пагинация (если требуется)
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 10,  # Количество объектов на странице
+    'PAGE_SIZE': 10,  # Quanity of objects per page
 
-    # Генерация схемы для Swagger/Redoc
+    # Swagger/Redoc schema generation
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
@@ -61,7 +58,7 @@ SPECTACULAR_SETTINGS = {
     'TITLE': 'Procurement Automation API',
     'DESCRIPTION': 'API для автоматизации закупок.',
     'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,  # Отключает включение схемы в /api/schema/
+    'SERVE_INCLUDE_SCHEMA': False,  # On / off for /api/schema/
 }
 
 # Application definition
@@ -122,10 +119,10 @@ DATABASES = {
 
 # Email settings
 EMAIL_HOST = os.getenv('EMAIL_HOST')
-EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))  # Преобразуем строку в число
+EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
 EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')
-EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'  # Преобразуем строку в булево значение
+EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
 
 # Password validation
 # https://docs.djangoproject.com/en/5.1/ref/settings/#auth-password-validators
@@ -137,7 +134,7 @@ AUTH_PASSWORD_VALIDATORS = [
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
         'OPTIONS': {
-            'min_length': 8,  # Укажите минимальную длину пароля
+            'min_length': 8,  # Min password length
         }
     },
     {

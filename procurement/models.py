@@ -1,35 +1,46 @@
 from django.contrib.auth.base_user import BaseUserManager
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from typing import Optional
 import uuid
 
 
-# Кастомный менеджер пользователя
 class CustomUserManager(BaseUserManager):
-    def create_user(self, email, password=None, **extra_fields):
+    """
+    Custom user manager with email as the unique identifier.
+    """
+    def create_user(self, email: str, password: Optional[str] = None, **extra_fields) -> 'User':
+        """
+        Creates and returns a regular user.
+        """
         if not email:
-            raise ValueError("The Email field must be set")
+            raise ValueError("The Email field is required.")
         email = self.normalize_email(email)
-        extra_fields.setdefault('username', email)  # Устанавливаем username равным email
+        extra_fields.setdefault('username', email)
         user = self.model(email=email, **extra_fields)
         user.set_password(password)
         user.save(using=self._db)
         return user
 
-    def create_superuser(self, email, password=None, **extra_fields):
+    def create_superuser(self, email: str, password: Optional[str] = None, **extra_fields) -> 'User':
+        """
+        Creates and returns a superuser.
+        """
         extra_fields.setdefault('is_staff', True)
         extra_fields.setdefault('is_superuser', True)
 
-        if extra_fields.get('is_staff') is not True:
+        if not extra_fields.get('is_staff'):
             raise ValueError('Superuser must have is_staff=True.')
-        if extra_fields.get('is_superuser') is not True:
+        if not extra_fields.get('is_superuser'):
             raise ValueError('Superuser must have is_superuser=True.')
 
         return self.create_user(email, password, **extra_fields)
 
 
-# Кастомная модель пользователя
 class User(AbstractUser):
+    """
+    Custom user model using email as the unique identifier.
+    """
     email = models.EmailField(unique=True)
     email_verified = models.BooleanField(default=False)
     email_verification_token = models.CharField(max_length=100, blank=True, null=True)
@@ -37,30 +48,35 @@ class User(AbstractUser):
     position = models.CharField(max_length=100, blank=True, null=True)
     password_reset_token = models.CharField(max_length=100, blank=True, null=True)
 
-    # Указываем кастомный менеджер
     objects = CustomUserManager()
 
-    # Определяем, что email будет использоваться как основное поле для аутентификации
     USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []
 
-    # Дополнительные обязательные поля, которые запрашиваются при создании суперпользователя
-    REQUIRED_FIELDS = []  # Здесь можно указать 'first_name', 'last_name', если они должны быть обязательными
-
-    def generate_email_verification_token(self):
+    def generate_email_verification_token(self) -> str:
+        """
+        Generates an email verification token.
+        """
         self.email_verification_token = uuid.uuid4().hex
         self.save()
         return self.email_verification_token
 
-    def reset_password_token(self):
+    def reset_password_token(self) -> str:
+        """
+        Generates a password reset token.
+        """
         self.password_reset_token = uuid.uuid4().hex
         self.save()
         return self.password_reset_token
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.email
 
 
 class Contact(models.Model):
+    """
+    User contact information.
+    """
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='contacts')
     city = models.CharField(max_length=100)
     street = models.CharField(max_length=100)
@@ -70,34 +86,43 @@ class Contact(models.Model):
     apartment = models.CharField(max_length=10, blank=True, null=True)
     phone = models.CharField(max_length=20)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.city}, {self.street}, {self.house}"
 
 
 class Shop(models.Model):
+    """
+    Shop model.
+    """
     name = models.CharField(max_length=255, unique=True)
     url = models.URLField(blank=True, null=True)
     state = models.BooleanField(default=True)
 
     class Meta:
-        ordering = ['id']  # Добавляем сортировку по ID
+        ordering = ['id']
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
 class Category(models.Model):
+    """
+    Product category.
+    """
     id = models.PositiveIntegerField(primary_key=True)
     name = models.CharField(max_length=255)
 
     class Meta:
-        ordering = ['id']  # Добавляем сортировку по умолчанию
+        ordering = ['id']
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
 class Product(models.Model):
+    """
+    Product model.
+    """
     id = models.PositiveIntegerField(primary_key=True)
     category = models.ForeignKey(Category, on_delete=models.CASCADE)
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='products')
@@ -109,29 +134,35 @@ class Product(models.Model):
     parameters = models.JSONField(default=dict)
 
     class Meta:
-        ordering = ['id']  # Устанавливаем порядок сортировки по ID
+        ordering = ['id']
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.name
 
 
 class Basket(models.Model):
+    """
+    User's shopping basket.
+    """
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='basket')
     product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name='basket_items')
     quantity = models.PositiveIntegerField()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Basket item: {self.product.name} (x{self.quantity})"
 
 
 class Order(models.Model):
+    """
+    User's order.
+    """
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='orders')
     contact = models.ForeignKey(Contact, on_delete=models.SET_NULL, null=True)
     status = models.CharField(max_length=50, default='created')
     created_at = models.DateTimeField(auto_now_add=True)
 
-    def __str__(self):
-        return f"Order #{self.id} - {self.status}"
-
     class Meta:
-        ordering = ['-created_at']  # Сортировка по дате создания (самые новые первыми)
+        ordering = ['-created_at']
+
+    def __str__(self) -> str:
+        return f"Order #{self.id} - {self.status}"

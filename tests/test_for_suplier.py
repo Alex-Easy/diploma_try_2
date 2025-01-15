@@ -12,15 +12,12 @@ def api_client():
 # Test successful upload of pricelist
 @pytest.mark.django_db
 def test_upload_pricelist_success(api_client):
-    # Создаем пользователя и аутентифицируем его
     user = User.objects.create_user(email="supplier@example.com", password="password123")
     api_client.force_authenticate(user=user)
 
-    # Создаем магазин и категорию
     shop = Shop.objects.create(name="Supplier Shop", state=True)
     category = Category.objects.create(id=1, name="Category 1")
 
-    # YAML-прайс-лист
     pricelist_content = """
     - id: 1
       name: Product 1
@@ -43,7 +40,6 @@ def test_upload_pricelist_success(api_client):
     with open("pricelist.yaml", "rb") as file:
         response = api_client.post(reverse('upload-pricelist', args=[shop.id]), {'file': file}, format='multipart')
 
-    # Проверяем успешное создание
     assert response.status_code == 200
     assert Product.objects.filter(name="Product 1").exists()
     assert Product.objects.filter(name="Product 2").exists()
@@ -51,14 +47,11 @@ def test_upload_pricelist_success(api_client):
 
 @pytest.mark.django_db
 def test_upload_pricelist_nonexistent_category(api_client):
-    # Создаем пользователя и аутентифицируем его
     user = User.objects.create_user(email="supplier@example.com", password="password123")
     api_client.force_authenticate(user=user)
 
-    # Создаем магазин
     shop = Shop.objects.create(name="Supplier Shop", state=True)
 
-    # Прайс-лист с несуществующей категорией
     pricelist_content = """
     - id: 1
       name: Product 1
@@ -81,11 +74,9 @@ def test_upload_pricelist_nonexistent_category(api_client):
 
 @pytest.mark.django_db
 def test_upload_pricelist_update_existing_product(api_client):
-    # Создаем пользователя и аутентифицируем его
     user = User.objects.create_user(email="supplier@example.com", password="password123")
     api_client.force_authenticate(user=user)
 
-    # Создаем магазин, категорию и товар
     shop = Shop.objects.create(name="Supplier Shop", state=True)
     category = Category.objects.create(id=1, name="Category 1")
     product = Product.objects.create(
@@ -93,7 +84,6 @@ def test_upload_pricelist_update_existing_product(api_client):
         price=100.00, price_rrc=120.00, quantity=10, parameters={"color": "red"}
     )
 
-    # Обновленный YAML-прайс-лист
     pricelist_content = """
     - id: 1
       name: Product 1
