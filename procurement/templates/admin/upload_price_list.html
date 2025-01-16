@@ -1,0 +1,31 @@
+{% extends "admin/base_site.html" %}
+
+{% block content %}
+  <div id="content-main">
+    <h1>Upload Price List</h1>
+    <form method="POST" enctype="multipart/form-data">
+      {% csrf_token %}
+
+      <!-- Template data upload forma -->
+      <div class="module aligned">
+        <div class="form-row">
+          <label for="id_yaml_file">YAML File</label>
+          <input type="file" name="yaml_file" id="id_yaml_file" required />
+        </div>
+      </div>
+
+      <div class="submit-row">
+        <button type="submit" name="apply" class="default">Upload</button>
+      </div>
+    </form>
+
+    <!-- Exception messages  -->
+    {% if messages %}
+      <ul class="messagelist">
+        {% for message in messages %}
+          <li class="success" style="color: green;">{{ message }}</li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+  </div>
+{% endblock %}

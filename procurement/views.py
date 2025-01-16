@@ -224,8 +224,6 @@ class BasketView(APIView):
         except Product.DoesNotExist:
             return Response({"error": f"Product with id {product_id} not found."}, status=404)
 
-
-# Basket Views (continued)
     def put(self, request: Any) -> Response:
         """
         Update basket items quantity.
