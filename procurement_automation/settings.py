@@ -53,17 +53,8 @@ REST_FRAMEWORK = {
     # Swagger/Redoc schema generation
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
-
-SPECTACULAR_SETTINGS = {
-    'TITLE': 'Procurement Automation API',
-    'DESCRIPTION': 'API для автоматизации закупок.',
-    'VERSION': '1.0.0',
-    'SERVE_INCLUDE_SCHEMA': False,  # On / off for /api/schema/
-}
-
-# Application definition
-
 INSTALLED_APPS = [
+    'baton',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -76,6 +67,16 @@ INSTALLED_APPS = [
     'django_extensions',
     'drf_spectacular',
 ]
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Procurement Automation API',
+    'DESCRIPTION': 'API для автоматизации закупок.',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,  # On / off for /api/schema/
+}
+
+# Application definition
+
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -194,4 +195,10 @@ LOGGING = {
             'propagate': True,
         },
     },
+}
+
+BATON = {
+    'SITE_NAME': 'Procurement Admin',  # Название вашего сайта в админке
+    'USER_ICON': 'fa fa-user',  # Иконка пользователя
+    # Другие настройки по вашему желанию
 }

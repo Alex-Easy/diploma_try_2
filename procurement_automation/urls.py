@@ -10,6 +10,7 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView, Sp
 urlpatterns = [
     # Admin panel
     path('admin/', admin.site.urls, name='admin-panel'),
+    path('baton/', include('baton.urls')),
 
     # Application-specific URLs
     path('api/v1/', include('procurement.urls'), name='api-root'),
