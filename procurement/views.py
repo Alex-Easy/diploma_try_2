@@ -1,18 +1,20 @@
+import logging
+import os
 from typing import Any
+
+import yaml
+from django.conf import settings
 from django.db.models.query import QuerySet
-from rest_framework import generics, status, permissions
+from rest_framework import generics, permissions
+from rest_framework import serializers
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.generics import ListAPIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from rest_framework.permissions import IsAuthenticated
 from rest_framework_simplejwt.views import TokenObtainPairView
+
 from .models import User, Contact, Shop, Category, Product, Basket, Order
-from rest_framework.exceptions import PermissionDenied
-from rest_framework import serializers
-import yaml
-import os
-from django.conf import settings
-import logging
 from .serializers import (
     UserRegisterSerializer, EmailVerificationSerializer,
     UserLoginSerializer, PasswordResetSerializer,

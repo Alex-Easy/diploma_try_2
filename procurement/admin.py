@@ -1,4 +1,5 @@
 from django.contrib import admin, messages
+from django.core.mail import send_mail
 from django.urls import path
 from django.shortcuts import render, redirect
 import yaml
@@ -16,10 +17,25 @@ def mark_orders_as_delivered(modeladmin, request, queryset):
 
 
 @admin.action(description="Reset user password via email")
+def send_reset_email(email, reset_url):
+    subject = "Password Reset Request"
+    message = f"To reset your password, click the following link: {reset_url}"
+    send_mail(subject, message, 'no-reply@example.com', [email])
+
+
 def reset_user_password(modeladmin, request, queryset):
     for user in queryset:
-        # Implement your API call here or custom logic
-        messages.info(request, f"Password reset email sent to {user.email}.")
+        try:
+            # Token generation
+            token = user.reset_password_token()
+            reset_url = f"http://127.0.0.1:8000/user/password_reset/confirm?email={user.email}&token={token}"
+
+            # Sent email
+            send_reset_email(user.email, reset_url)
+
+            messages.info(request, f"Password reset email sent to {user.email}.")
+        except Exception as e:
+            messages.error(request, f"Failed to send password reset email to {user.email}: {str(e)}")
 
 
 @admin.action(description="Activate selected shops")
@@ -46,12 +62,12 @@ def upload_price_list(modeladmin, request, queryset):
             return redirect(request.get_full_path())
 
         try:
-            # Сохраняем файл и импортируем данные
+            # Save to temporary file
             temp_file_path = os.path.join(settings.BASE_DIR, 'temp_price_list.yaml')
             with open(temp_file_path, 'wb') as temp_file:
                 for chunk in yaml_file.chunks():
                     temp_file.write(chunk)
-
+            # Import products
             import_products_from_yaml(temp_file_path)
             messages.success(request, "Price list uploaded successfully.")
         except Exception as e:

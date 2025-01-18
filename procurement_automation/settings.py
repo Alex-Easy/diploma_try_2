@@ -198,7 +198,7 @@ LOGGING = {
 }
 
 BATON = {
-    'SITE_NAME': 'Procurement Admin',  # Название вашего сайта в админке
-    'USER_ICON': 'fa fa-user',  # Иконка пользователя
-    # Другие настройки по вашему желанию
+    'SITE_NAME': 'Procurement Admin',  # Name of the site
+    'USER_ICON': 'fa fa-user',  # Icon of the user
+    # Other options if needed
 }
